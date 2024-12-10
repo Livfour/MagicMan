@@ -80,12 +80,9 @@ def save_image_seq(video, save_dir):
     image_seq = video.squeeze(0).detach().cpu().numpy().transpose(1,2,3,0) # f h w c
     if image_seq.shape[-1]==1:
         image_seq = image_seq[...,0] # f h w for gray image
-    num_frames = image_seq.shape[0]
-    angle_step = 360 // num_frames
     for i in range(image_seq.shape[0]):
         image = Image.fromarray((image_seq[i]*255).astype(np.uint8))
-        angle = i * angle_step
-        save_path = os.path.join(save_dir, f"{angle:03d}.png")
+        save_path = os.path.join(save_dir, f"{i:04d}.png")
         image.save(save_path)
 
 def get_camera(elevation, azimuth):
