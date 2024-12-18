@@ -37,6 +37,49 @@ def pil_list_to_tensor(pil_list):
         tensor_list.append(transform(pil))
     return torch.stack(tensor_list, dim=0).transpose(0, 1).unsqueeze(0)
 
+def mask_and_resize(image: np.ndarray, mask: np.ndarray, ratio=1.85 / 2.0, resolution=512):
+    """
+    Args:
+        image: np.ndarray, shape (H, W, 3), dtype uint8
+        mask: np.ndarray, shape (H, W), dtype uint8
+    Returns:
+        rgb_pil: PIL.Image.Image, shape (resolution, resolution, 3), dtype uint8
+        mask_pil: PIL.Image.Image, shape (resolution, resolution), dtype uint8
+    """
+    img_rembg = image * mask[:, :, np.newaxis]
+    alpha = mask[:, :, np.newaxis] * 255
+    img_rembg = np.concatenate([img_rembg, alpha], axis=-1)
+    x, y, w, h = cv2.boundingRect(mask)
+    max_size = max(w, h)
+    side_len = int(max_size / ratio)
+    padded_image = np.zeros((side_len, side_len, 4), dtype=np.uint8)
+    center = side_len // 2
+    padded_image[
+        center - h // 2 : center - h // 2 + h,
+        center - w // 2 : center - w // 2 + w,
+    ] = img_rembg[y : y + h, x : x + w]
+    # resize image
+    rgba = Image.fromarray(padded_image).resize((resolution, resolution), Image.LANCZOS)
+    # white bg
+    rgba_arr = np.array(rgba) / 255.0
+    rgb = rgba_arr[..., :3] * rgba_arr[..., -1:] + (1 - rgba_arr[..., -1:])
+    rgb_pil = Image.fromarray((rgb * 255).astype(np.uint8))
+    # mask
+    image = (rgba_arr * 255).astype(np.uint8)
+    color_mask = image[..., -1]
+    image = (rgb * 255).astype(np.uint8)
+    invalid_color_mask = color_mask < 255 * 0.5
+    threshold = np.ones_like(image[:, :, 0]) * 250
+    invalid_white_mask = (
+        (image[:, :, 0] > threshold)
+        & (image[:, :, 1] > threshold)
+        & (image[:, :, 2] > threshold)
+    )
+    invalid_color_mask_final = invalid_color_mask & invalid_white_mask
+    color_mask = (1 - invalid_color_mask_final) > 0
+    mask_pil = Image.fromarray((color_mask * 255).astype(np.uint8))
+    return rgb_pil, mask_pil
+
 def preprocess_image(img_pil, ratio=1.85/2.0, resolution=512):
     img = np.array(img_pil) # H,W,C=3 
     # remove background

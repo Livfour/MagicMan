@@ -18,7 +18,7 @@ from src.models.unet_3d import UNet3DConditionModel
 from src.pipelines.pipeline_magicman import MagicManPipeline
 from src.utils.util import get_camera
 from src.utils.util import (
-    preprocess_image,
+    mask_and_resize,
     save_image_seq,
 )
 import sys
@@ -255,16 +255,14 @@ def main():
         os.makedirs(output_path, exist_ok=True)
 
     ##0## reference image preparation
-    ref_rgb_pil = Image.open(input_path).convert("RGB")
-    ref_rgb_pil, ref_mask_pil = preprocess_image(
-        ref_rgb_pil
-    )  # remove background & resize & center
-    ref_normal_pil = init_ref_normal(
-        ref_rgb_pil, ref_mask_pil, method="marigold", device=device
-    )  # initilize reference normal map
+    ref_rgb_pil = Image.open(os.path.join(input_path, f"image.png"))
+    normal_rgb_pil = Image.open(os.path.join(input_path, f"normal.png"))
+    mask_pil = np.load(os.path.join(input_path, f"mask.npy"))
+    ref_rgb_pil, ref_mask_pil = mask_and_resize(ref_rgb_pil, mask_pil)
+    ref_normal_pil, _ = mask_and_resize(normal_rgb_pil, mask_pil)
     ref_rgb_pil.save(os.path.join(output_path, f"ref_rgb.png"))
     ref_mask_pil.save(os.path.join(output_path, f"ref_mask.png"))
-    ref_normal_pil.save(os.path.join(output_path, f"ref_normal.png"))
+    ref_normal_pil.save(os.path.join(output_path, f"ref_normal.png"))      
 
     ##2## Initialize NVS w/o SMPL-X
     output = pipe(
