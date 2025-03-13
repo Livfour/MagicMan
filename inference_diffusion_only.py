@@ -255,7 +255,7 @@ def main():
         os.makedirs(output_path, exist_ok=True)
 
     ##0## reference image preparation
-    ref_rgb_pil = Image.open(os.path.join(input_path, f"image.png"))
+    ref_rgb_pil = Image.open(os.path.join(input_path, f"color.png"))
     normal_rgb_pil = Image.open(os.path.join(input_path, f"normal.png"))
     mask_pil = np.load(os.path.join(input_path, f"mask.npy"))
     ref_rgb_pil, ref_mask_pil = mask_and_resize(ref_rgb_pil, mask_pil)
@@ -284,9 +284,10 @@ def main():
         generator=generator,
     )  # (b=1, c, f, h, w)
     rgb_video = output.rgb_videos
+    normal_video = output.normal_videos
 
-    save_image_seq(rgb_video, os.path.join(output_path, f"images"))
-
+    save_image_seq(rgb_video, os.path.join(output_path, f"colors"))
+    save_image_seq(normal_video, os.path.join(output_path, f"normals"))
 
 if __name__ == "__main__":
     main()
